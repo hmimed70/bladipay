@@ -10,31 +10,37 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  fullname: {
+  nom: {
     type: String,
-    required: [true, "Please Enter Your Name"],
-    maxLength: [30, "Name cannot exceed 30 characters"],
-    minLength: [3, "Name should have more than 4 characters"],
+    required: [true, "S'il vous plaît entrez votre nom"],
+    maxLength: [30, "Nom ne peut pas dépasser 30 caractères"],
+    minLength: [2, "Nom doit avoir plus de 2 caractères"],
   },
-  username: {
+  prenom: {
     type: String,
-    required: [true, "Please Enter Your Username"],
-    maxLength: [30, "Name cannot exceed 30 characters"],
-    minLength: [3, "Name should have more than 4 characters"],
+    required: [true, "S'il vous plaît entrez votre prenom"],
+    maxLength: [30, "Prenom ne peut pas dépasser 30 caractères"],
+    minLength: [3, "Prenom doit avoir plus de 3 caractères"],
   },
   email: {
     type: String,
     required: [true, 'please enter your Email'],
     unique: true,
-    validate: [validator.isEmail, "Please Enter a valid Email"]
+    validate: [validator.isEmail, "S'il vous plaît entrez une adresse e-mail valide"],
   },
   password: {
     type: String,
     required: true,
     minlength: 6,
   },
-  phone: {
+  telephone: {
     type: String,
+    required: [true, "S'il vous plaît entrez votre numéro de téléphone"],
+  },
+  active: {
+    type: Boolean,
+    default: true,
+    select: false
   },
   passwordResetToken: String,
   passwordResetExpires: Date,
@@ -44,25 +50,13 @@ const userSchema = new mongoose.Schema({
     default: true,
     select: false
   },
-  gender: {
-    type: String,
-    enum: ['male', 'female'],
-  },
-  state: {
-    type: String,
-  },
+
   role: {
     type: String,
-    enum: ['admin', 'confirmatrice'],
-    default: 'confirmatrice',
+    enum: ['admin', 'client'],
+    default: 'client',
   },
   
-  confirmedOrders: { type: Number, default: 0 },
-  orderConfirmedPrice: { type: Number, default: 20 },
-  handleLimit: { type: Number, default: 10 }, // Set by admin
-  availableAmount: { type: Number, default: 0 }, // Withdrawable amount
-  pendingAmount: { type: Number, default: 0 },   // Current month earnings
-  paidAmount: { type: Number, default: 0 },      // Total paid amount
   createdAt: {
     type: Date,
     default: Date.now,
@@ -76,12 +70,6 @@ const userSchema = new mongoose.Schema({
     timestamps: true,
   });
 
-  userSchema.methods.generateAuthToken = function () {
-    const token = jwt.sign({ _id: this._id, role: this.role }, "pogkdohjpopkfkfoghklnFL59596", { expiresIn: '1h' });
-    return token;
-  };
-  
-// Hash password before saving the user
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
@@ -103,10 +91,10 @@ userSchema.pre(/^find/, function(next) {
 userSchema.pre('remove', async function (next) {
   try {
     // Delete payments associated with this user
-    await Payment.deleteMany({ userId: this._id });
+   // await Payment.deleteMany({ userId: this._id });
     next();
   } catch (error) {
-    next(error);
+    //next(error);
   }
 });
 // Method to compare password during login

@@ -2,27 +2,25 @@ const bcrypt = require('bcryptjs');
 const { validateInput } = require("../utils/ValidateInput");
 const catchAsyncError =  require("../middlewares/catchAsyncError");
 const User =  require("../models/userModel");
-const Payment =  require("../models/PaymentModel");
 const fs = require('fs');
 const path = require('path');
 const ErrorHandler = require("../utils/errorHandler");
 const ApiFeatures = require("../utils/Features");
 const { filterBodyData } = require("../utils/helpers");
-const Notification = require('../models/notificationModel');
 exports.updateMe = catchAsyncError(async (req, res, next) => {
 
     if (req.body.password || req.body.passwordConfirm) {
       return next(
-        new ErrorHandler(  'This route is not for password updates.  use /updateMyPassword for updating your password.',400)
+        new ErrorHandler("S'il vous plait utiliser /updateme pour modifier votre mot de passe",400)
       );
     }
     if(req.body.email !== req.user.email) {
       const isEmailexist = await User.findOne({email: req.body.email});
       if (isEmailexist) {
-        return next(new ErrorHandler('Email already exists', 400));
+        return next(new ErrorHandler('Email déjà utilisé', 400));
       };
     }
-     const filterdData = filterBodyData(req.body, ['fullname', 'username', 'email', 'state', 'role', 'gender']);
+     const filterdData = filterBodyData(req.body, ['nom', 'prenom', 'email', 'telephone']);
   
     const user = await User.findByIdAndUpdate(req.user.id, filterdData, {
       new: true,
@@ -42,36 +40,15 @@ exports.updateMe = catchAsyncError(async (req, res, next) => {
     // Check if user exists
     const user = await User.findById(userId);
     if (!user) {
-        return next(new ErrorHandler('User not found', 404));
+        return next(new ErrorHandler('Utilisateur introuvable', 404));
     }
-
-    // Fetch associated payments before deletion
-    const payments = await Payment.find({ userId });
-
-    // Delete payment images if they exist
-    payments.forEach((payment) => {
-        if (payment?.image) {
-            const imagePath = path.resolve(`uploads/${payment.image}`);
-            if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
-            }
-        }
-    });
-
-    // Delete associated payments
-    await Payment.deleteMany({ userId });
-
-    // Delete all notifications related to the user
-    await Notification.deleteMany({ 
-        $or: [{ sender: userId }, { receiver: userId }, { for: userId }]
-    });
 
     // Delete the user
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({
         success: true,
-        message: "User, associated payments (with images), and notifications deleted successfully",
+        message: "Utilisateur supprimé avec succès",
     });
 });
 
@@ -87,31 +64,28 @@ exports.updateMe = catchAsyncError(async (req, res, next) => {
   });
 */
 exports.createUser = catchAsyncError(async (req, res, next) => {
-  const requiredFields = ['fullname', 'phone', 'username', 'email', 'password', 'role', 'gender'];
+  const requiredFields = ['nom', 'telephone', 'prenom', 'email', 'password', 'role', 'active'];
   const missingFields = validateInput(req.body, requiredFields);
   
   if (missingFields.length > 0) {
     return next(new ErrorHandler(`Missing required fields: ${missingFields.join(', ')}`, 400));
   }
-    const { fullname,phone, username, role, email, password, state, type, orderConfirmedPrice, handleLimit, gender} = req.body;
+    const { nom,telephone, prenom, role, email, password, active} = req.body;
     const lastUser = await User.findOne().sort({ createdAt: -1 });
     const nextUserNumber = lastUser 
       ? parseInt(lastUser.userId.slice(3)) + 1 
       : 1;
     const userId = `USR${String(nextUserNumber).padStart(4, '0')}`;
     const user = await User.create({
-        fullname,
-        username,
+        nom,
+        prenom,
         role,
-        phone,
+        telephone,
         userId,
         email,
         password,
-        state,
-        type,
-        orderConfirmedPrice,
-        handleLimit,
-        gender
+       active,
+  
     });
     res.status(200).json({
         success: true,
@@ -154,7 +128,7 @@ exports.createUser = catchAsyncError(async (req, res, next) => {
     const user = await User.findById(req.params.id);
     if(!user) {
         
-        return next(new ErrorHandler('no user found with this id',404)); 
+        return next(new ErrorHandler('Utilisateur introuvable',404)); 
     }
     user.password = undefined;
 
@@ -171,7 +145,7 @@ exports.createUser = catchAsyncError(async (req, res, next) => {
 
 
   exports.updateUser = catchAsyncError(async (req, res, next) => {
-    const requiredFields = ['fullname', 'phone', 'username', 'email', 'role', 'gender'];
+    const requiredFields = ['nom', 'telephone', 'prenom', 'email', 'role'];
   const missingFields = validateInput(req.body, requiredFields);
   
   if (missingFields.length > 0) {

@@ -4,26 +4,33 @@ const ErrorHandler = require("../utils/errorHandler");
 const sendToken = require("../utils/sendToken");
 const crypto = require('crypto');
 const { sendPasswordResetEmail }= require('../utils/sendEmail');
+const signToken = require("../utils/sendToken");
 
 
 exports.RegisterUser = catchAsyncError(async (req, res, next) => {
-
-    const { fullname, username, role, email, password, state, type, orderConfirmedPrice, handleLimit, gender} = req.body;
+    const lastUser = await User.findOne().sort({ createdAt: -1 });
+    const nextUserNumber = lastUser 
+      ? parseInt(lastUser.userId.slice(3)) + 1 
+      : 1;
+    const userId = `USR${String(nextUserNumber).padStart(4, '0')}`;
+    const { nom, prenom, email, password, telephone   } = req.body;
 
     const user = await User.create({
-        fullname,
-        username,
-        role,
+      userId,
+        nom,
+        prenom,
         email,
         password,
-        state,
-        type,
-        orderConfirmedPrice,
-        handleLimit,
-        gender
+        telephone
+    });
+    const token =  signToken(user._id);
+        res.status(201).json({
+      success: true,
+      token,
+      user 
     });
 
-    sendToken(user, 201, res);
+   // sendToken(user, 201, res);
 });
 
 
@@ -31,21 +38,26 @@ exports.LoginUser = catchAsyncError(async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return next(new ErrorHandler("Please Enter Email and Password", 400));
+    return next(new ErrorHandler("S'il vous plaît entrez votre email et votre mot de passe", 400));
   }
 
   const user = await User.findOne({ email }).select("+password");
 
   if (!user) {
-    return next(new ErrorHandler("Invalid email or password", 401));
+    return next(new ErrorHandler("Email ou mot de passe incorrect", 401));
   }
 
   const isPasswordMatched = await user.comparePassword(password);
 
   if (!isPasswordMatched) {
-    return next(new ErrorHandler("Invalid email or password", 401));
+    return next(new ErrorHandler("Email ou mot de passe incorrect", 401));
   }
-  sendToken( user, 200,req, res);
+    const token =  signToken(user._id);
+        res.status(200).json({
+      success: true,
+      token,
+      user 
+    });
 })
 
 exports.logout = (req, res) => {
@@ -123,12 +135,12 @@ exports.updatePassword = catchAsyncError(async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).select('+password');
     if (!user) {
-      return next(new ErrorHandler('User not found.', 404));
+      return next(new ErrorHandler('Utilisateur introuvable', 404));
     }
 
     const isMatch = await user.comparePassword(req.body.passwordCurrent);
     if (!isMatch) {
-      return next(new ErrorHandler('Your current password is incorrect.', 401));
+      return next(new ErrorHandler('Le mot de passe actuel est incorrect.', 401));
     }
 
     user.password = req.body.password;
@@ -138,7 +150,7 @@ exports.updatePassword = catchAsyncError(async (req, res, next) => {
     sendToken(user, 200, req, res);
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return next(new ErrorHandler(`Validation Error: ${error.message}`, 400));
+      return next(new ErrorHandler(`Validation Erreur : ${error.message}`, 400));
     }
     return next(error);
   }

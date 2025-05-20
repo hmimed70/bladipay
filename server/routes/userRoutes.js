@@ -7,9 +7,8 @@ const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 const userRoute = express.Router();
 
 userRoute.route('/login').post(AuthController.LoginUser);
-//userRoute.route('/forgotPassword').post(AuthController.forgotPassword);
-//userRoute.route('/resetPassword/:token').patch(AuthController.resetPassword);
-//goijfdhgoj
+userRoute.route('/register').post(AuthController.RegisterUser);
+
 
 userRoute.use(isAuthenticated);
 userRoute.route('/logout').get(AuthController.logout);

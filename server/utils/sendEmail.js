@@ -10,7 +10,7 @@ function newTransport() {
     return nodemailer.createTransport({
       service: 'SendGrid',
       auth: {
-        user: process.env.SENDGRID_USERNAME,
+        user: process.env.SENDGRID_prenom,
         pass: process.env.SENDGRID_PASSWORD
       }
     });
@@ -20,7 +20,7 @@ function newTransport() {
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,
     auth: {
-      user: process.env.EMAIL_USERNAME,
+      user: process.env.EMAIL_prenom,
       pass: process.env.EMAIL_PASSWORD
     }
   });

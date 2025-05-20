@@ -37,7 +37,7 @@ exports.isAdmin = catchAsyncError((req, res, next) => {
 });
 
 exports.isUser = catchAsyncError((req, res, next) => {
-  if (req.user.role !== 'confirmatrice') {
+  if (req.user.role !== 'client') {
     return next(new ErrorHandler('You do not have permission to access this route.', 403));
   }
   next();

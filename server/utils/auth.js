@@ -45,7 +45,7 @@ exports.auth = async (provider, next) =>  {
         formParams.append('WD_ACTION_', 'AJAXEXECUTE');
         formParams.append('EXECUTEPROCCHAMPS', 'ServeurAPI.API_Connecte');
         formParams.append('WD_CONTEXTE_', providerSettings.extra.context);
-        formParams.append('PA1', provider.username);
+        formParams.append('PA1', provider.prenom);
         formParams.append('PA2', provider.password);
         formParams.append('PA3', providerSettings.extra.pa3);
 
