@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'please enter your Email'],
+    required: [true, "S'il vous plaît entrez votre adresse e-mail"],
     unique: true,
     validate: [validator.isEmail, "S'il vous plaît entrez une adresse e-mail valide"],
   },
@@ -33,10 +33,17 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
-  telephone: {
-    type: String,
-    required: [true, "S'il vous plaît entrez votre numéro de téléphone"],
-  },
+telephone: {
+  type: String,
+  required: [true, "S'il vous plaît entrez le numéro de téléphone du bénéficiaire"],
+  unique: true,
+  validate: {
+    validator: function (v) {
+      return /^(?:(?:\+213|0)(5|6|7)[0-9]{8}|(?:\+33|0)[1-9][0-9]{8})$/.test(v);
+    },
+    message: props => `${props.value} n'est pas un numéro de téléphone valide pour l'Algérie ou la France`
+  }
+},
   active: {
     type: Boolean,
     default: true,

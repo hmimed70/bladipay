@@ -11,6 +11,8 @@ const xss = require('xss-clean');
 const path = require('path');
 
 const userRoute = require('./routes/userRoutes');
+const commandeRoute = require('./routes/commandeRoutes');
+const parametreRoute = require('./routes/ParameterRoutes');
 
 const app = express();
 
@@ -38,6 +40,8 @@ app.get('/', (req, res) => {
 
 
 app.use('/api/v1/users/', userRoute);
+app.use('/api/v1/commandes/', commandeRoute);
+app.use('/api/v1/settings/', parametreRoute);
 
 
 // Handle 404 errors for undefined routes
