@@ -12,7 +12,7 @@ userRoute.route('/register').post(AuthController.RegisterUser);
 
 userRoute.use(isAuthenticated);
 userRoute.route('/logout').get(AuthController.logout);
-userRoute.route('/updateMe').patch(UserController.updateMe);
+userRoute.route('/updateProfil').patch(UserController.updateMe);
 //userRoute.route('/deleteMe').delete(UserController.deleteMe);
 userRoute.route('/updatePassword').patch( AuthController.updatePassword);
 

@@ -7,6 +7,13 @@ const path = require('path');
 const ErrorHandler = require("../utils/errorHandler");
 const ApiFeatures = require("../utils/Features");
 const { filterBodyData } = require("../utils/helpers");
+
+const cleanupUploadedFile = (filename) => {
+  const filePath = path.join(__dirname, '../uploads/avatar', filename);
+  fs.unlink(filePath, (err) => {
+    if (err) console.error(`Erreur lors de la suppression du fichier : ${filePath}`, err);
+  });
+};
 exports.updateMe = catchAsyncError(async (req, res, next) => {
 
     if (req.body.password || req.body.passwordConfirm) {
@@ -14,8 +21,14 @@ exports.updateMe = catchAsyncError(async (req, res, next) => {
         new ErrorHandler("S'il vous plait utiliser /updateme pour modifier votre mot de passe",400)
       );
     }
-    if(req.body.email !== req.user.email) {
-      const isEmailexist = await User.findOne({email: req.body.email});
+        if(req?.body?.telephone !== req?.user?.telephone) {
+      const isPhoneExist = await User.findOne({telephone: req.body.telephone});
+      if (isPhoneExist) {
+        return next(new ErrorHandler('Numéro de téléphone déjà utilisé', 400));
+      };
+    }
+    if(req.body.email !== req?.user?.email) {
+      const isEmailexist = await User.findOne({email: req?.body?.email});
       if (isEmailexist) {
         return next(new ErrorHandler('Email déjà utilisé', 400));
       };
@@ -44,6 +57,9 @@ exports.updateMe = catchAsyncError(async (req, res, next) => {
     }
 
     // Delete the user
+    if (user?.avatar) {
+    cleanupUploadedFile(user.avatar);
+    }
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({

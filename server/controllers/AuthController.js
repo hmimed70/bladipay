@@ -1,26 +1,113 @@
 const catchAsyncError =  require("../middlewares/catchAsyncError");
 const User =  require("../models/userModel");
 const ErrorHandler = require("../utils/errorHandler");
-const sendToken = require("../utils/sendToken");
-const crypto = require('crypto');
 const { sendPasswordResetEmail }= require('../utils/sendEmail');
 const signToken = require("../utils/sendToken");
 
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 Mo
 
+const uploadDir = path.join(__dirname, '../uploads/avatar');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Créer le dossier s'il n'existe pas
+    fs.mkdir(uploadDir, { recursive: true }, (err) => {
+      if (err) return cb(err);
+      cb(null, uploadDir);
+    });
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+const allowedTypes = /jpg|jpeg|png/;
+
+const fileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const mimetype = allowedTypes.test(file.mimetype);
+  const extname = allowedTypes.test(ext);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    const error = new multer.MulterError('LIMIT_UNEXPECTED_FILE');
+    error.message = 'Seuls les images sont autorisé!';
+    cb(error);
+  }
+};
+
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE,
+    files: 1
+  },
+
+  fileFilter,
+}).single('avatar');
+
+const cleanupUploadedFile = (filename) => {
+  const filePath = path.join(__dirname, '../uploads/avatar', filename);
+  fs.unlink(filePath, (err) => {
+    if (err) console.error(`Erreur lors de la suppression du fichier : ${filePath}`, err);
+  });
+};
 exports.RegisterUser = catchAsyncError(async (req, res, next) => {
-    const lastUser = await User.findOne().sort({ createdAt: -1 });
+    upload(req, res, async (err) => {
+      // Gestion des erreurs Multer
+      if (err) {
+        let message;
+        switch (err.code) {
+          case 'LIMIT_PART_COUNT':
+            message = 'Trop de parties dans la requête.';
+            break;
+          case 'LIMIT_FILE_SIZE':
+            message = `Photo trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`;
+            break;
+          case 'LIMIT_FILE_COUNT':
+            message = "s'il vous plait, envoyez uniquement une photo.";
+            break;
+          case 'LIMIT_FIELD_KEY':
+          case 'LIMIT_FIELD_VALUE':
+          case 'LIMIT_FIELD_COUNT':
+            message = 'Le formulaire contient des champs non valides ou trop longs.';
+            break;
+          case 'LIMIT_UNEXPECTED_FILE':
+            message = "s'il vous plait, envoyez uniquement une photo.";
+            break;
+            default:
+            message = err.message || 'Erreur lors de l’envoi de la photo.';
+        }
+        return next(new ErrorHandler(message, 400));
+      }
+    
+    const { nom, prenom, email, password, telephone   } = req.body;
+    const existingUser = await User.findOne({ $or: [{ email }, { telephone }] });
+if (existingUser) {
+  if(req.file?.filename) {
+    cleanupUploadedFile(req.file.filename);
+  }
+  return next(new ErrorHandler('Email ou téléphone déjà utilisé.', 400));
+}
+
+    try {
+      const lastUser = await User.findOne().sort({ createdAt: -1 });
     const nextUserNumber = lastUser 
       ? parseInt(lastUser.userId.slice(3)) + 1 
       : 1;
     const userId = `USR${String(nextUserNumber).padStart(4, '0')}`;
-    const { nom, prenom, email, password, telephone   } = req.body;
-
+    
     const user = await User.create({
       userId,
         nom,
         prenom,
         email,
         password,
+        avatar: req?.file?.filename || null,
         telephone
     });
     const token =  signToken(user._id);
@@ -29,8 +116,16 @@ exports.RegisterUser = catchAsyncError(async (req, res, next) => {
       token,
       user 
     });
+  }
+     catch (dbError) {
+          if (req.file?.filename) {
+            cleanupUploadedFile(req.file.filename);
+          }
+          console.error(dbError);
+          return next(new ErrorHandler('Erreur lors de la création du compte.', 500));
+        }
 
-   // sendToken(user, 201, res);
+  })
 });
 
 
@@ -139,7 +234,13 @@ exports.resetPassword = catchAsyncError(async (req, res, next) => {
 */
 exports.updatePassword = catchAsyncError(async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id).select('+password');
+    if(!req?.body?.password || !req?.body?.passwordCurrent) {
+      return next(new ErrorHandler('Veuillez fournir le mot de passe actuel et le nouveau mot de passe', 400));
+    }
+    if(req?.body?.password === req?.body?.passwordCurrent) {
+     return next(new ErrorHandler('le nouveau mot de passe doit différent du mot de passe actuel', 400));
+    }
+    const user = await User.findById(req?.user?._id).select('+password');
     if (!user) {
       return next(new ErrorHandler('Utilisateur introuvable', 404));
     }
@@ -150,10 +251,16 @@ exports.updatePassword = catchAsyncError(async (req, res, next) => {
     }
 
     user.password = req.body.password;
-
+    
     await user.save();
+    user.password = undefined;
+    const token =  signToken(user._id);
+        res.status(200).json({
+      success: true,
+      token,
+      user
+    });
 
-    sendToken(user, 200, req, res);
   } catch (error) {
     if (error.name === 'ValidationError') {
       return next(new ErrorHandler(`Validation Erreur : ${error.message}`, 400));

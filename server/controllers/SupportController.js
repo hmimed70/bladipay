@@ -9,7 +9,16 @@ const multer = require('multer');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 5 Mo
 
 const uploadDir = path.join(__dirname, '../uploads/support');
-
+const allowedTypeSupport = [
+    'Problème de Recharge',
+    'Problème de Paiement',
+    'Retard de commande',
+    'Demande de Remboursement',
+    'Modification de Commande',
+    'problème de Compte',
+    'Suggestions',
+    'Autre'
+  ]
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     // Créer le dossier s'il n'existe pas
@@ -95,6 +104,12 @@ exports.createSupportTicket = catchAsyncError(async (req, res, next) => {
       return next(new ErrorHandler('Le type et la description sont requis.', 400));
     }
 
+    if(!allowedTypeSupport.includes(type)) {
+      if (req.file?.filename) {
+        cleanupUploadedFile(req.file.filename);
+      }
+      return next(new ErrorHandler("S'il vous plait donner le type de support", 400));
+    }
     try {
       const supportTicket = await Support.create({
         type,
@@ -109,6 +124,7 @@ exports.createSupportTicket = catchAsyncError(async (req, res, next) => {
       if (req.file?.filename) {
         cleanupUploadedFile(req.file.filename);
       }
+      console.error(dbError);
       return next(new ErrorHandler('Erreur lors de la création du ticket.', 500));
     }
   });
