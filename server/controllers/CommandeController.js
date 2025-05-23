@@ -172,7 +172,7 @@ exports.getAllCommandes = catchAsyncError(async (req, res, next) => {
 exports.getCommande = catchAsyncError(async (req, res, next) => {
     let commande;
     if(req.user.role === 'client') {
-        commande = await Commande.findOne({ _id: req.params.id, clientId: req.user.id }).populate('user');
+        commande = await Commande.findOne({ _id: req.params.id, clientId: req.user.id }).populate('clientId');
     }
     else if(req.user.role === 'admin') {
         commande = await Commande.findOne({ _id: req.params.id }).populate('user');

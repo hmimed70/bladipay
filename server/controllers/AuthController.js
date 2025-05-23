@@ -41,22 +41,28 @@ exports.LoginUser = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("S'il vous plaît entrez votre email et votre mot de passe", 400));
   }
 
-  const user = await User.findOne({ email }).select("+password");
+  const user = await User.findOne({ email, active: true }).select("+password");
 
   if (!user) {
     return next(new ErrorHandler("Email ou mot de passe incorrect", 401));
   }
 
   const isPasswordMatched = await user.comparePassword(password);
-
   if (!isPasswordMatched) {
     return next(new ErrorHandler("Email ou mot de passe incorrect", 401));
+  }
+  const sendedUsr = {
+    _id: user._id,
+    email: user.email,
+    nom: user.nom,
+    prenom: user.prenom,
+    role: user.role
   }
     const token =  signToken(user._id);
         res.status(200).json({
       success: true,
       token,
-      user 
+      user: sendedUsr
     });
 })
 

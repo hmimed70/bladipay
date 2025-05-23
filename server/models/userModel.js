@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 6,
+    select: false
   },
 telephone: {
   type: String,
@@ -52,11 +53,7 @@ telephone: {
   passwordResetToken: String,
   passwordResetExpires: Date,
   passwordChangedAt: Date,
-  active: {
-    type: Boolean,
-    default: true,
-    select: false
-  },
+
 
   role: {
     type: String,

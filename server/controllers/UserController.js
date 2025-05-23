@@ -25,7 +25,7 @@ exports.updateMe = catchAsyncError(async (req, res, next) => {
     const user = await User.findByIdAndUpdate(req.user.id, filterdData, {
       new: true,
       runValidators: true
-    }).select('-password');
+    });
   
     res.status(200).json({
       status: 'success',
@@ -101,7 +101,7 @@ exports.createUser = catchAsyncError(async (req, res, next) => {
     const usersCount = await User.countDocuments();
     
     // Initialize ApiFeatures with filtering and pagination logic
-    const apiFeature = new ApiFeatures(User.find().select('-password'), req.query)
+    const apiFeature = new ApiFeatures(User.find(), req.query)
       .search()
       .filter()
       .sort()

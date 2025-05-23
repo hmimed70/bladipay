@@ -79,7 +79,7 @@ class ApiFeatures {
             const filteredFields = this.queryStr.fields.split(',').join(' ');
             this.query = this.query.select(filteredFields)
           }else {
-            this.query = this.query.select('-__v');
+            //this.query = this.query.select('-__v');
           }
        return this;    
       }

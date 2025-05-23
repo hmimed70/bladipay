@@ -10,10 +10,11 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const path = require('path');
 
+const supportRoute = require('./routes/supportRoute');
 const userRoute = require('./routes/userRoutes');
 const commandeRoute = require('./routes/commandeRoutes');
 const parametreRoute = require('./routes/ParameterRoutes');
-
+const emailConfigRoutes = require('./routes/emailConfigRoutes');
 const app = express();
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -38,6 +39,8 @@ app.get('/', (req, res) => {
   res.render('index', { message: 'Welcome to the Express app with EJS!' });
 });
 
+app.use('/api/v1/emails/', emailConfigRoutes);
+app.use('/api/v1/supports/', supportRoute);
 
 app.use('/api/v1/users/', userRoute);
 app.use('/api/v1/commandes/', commandeRoute);
