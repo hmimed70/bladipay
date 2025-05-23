@@ -2,13 +2,25 @@ const Support = require('../models/SupportModel');
 const catchAsyncError = require('../middlewares/catchAsyncError');
 const ErrorHandler = require('../utils/errorHandler');
 const ApiFeatures = require('../utils/Features');
+const util = require('util');
 
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 5 Mo
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-const uploadDir = path.join(__dirname, '../uploads/support');
+
+const {  cleanupUploadedFile, createUploader} = require('../utils/UploadHelper');
+
+// Custom uploader for user avatars
+const upload = util.promisify(
+  createUploader({
+    directory: '../uploads/support',
+    maxFileSize: 5 * 1024 * 1024,
+    allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
+    fieldName: 'image'
+  })
+);
+
+
+
 const allowedTypeSupport = [
     'Problème de Recharge',
     'Problème de Paiement',
@@ -19,94 +31,35 @@ const allowedTypeSupport = [
     'Suggestions',
     'Autre'
   ]
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Créer le dossier s'il n'existe pas
-    fs.mkdir(uploadDir, { recursive: true }, (err) => {
-      if (err) return cb(err);
-      cb(null, uploadDir);
-    });
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
 
-const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|gif/;
-
-const fileFilter = (req, file, cb) => {
-  const ext = path.extname(file.originalname).toLowerCase();
-  const mimetype = allowedTypes.test(file.mimetype);
-  const extname = allowedTypes.test(ext);
-
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    const error = new multer.MulterError('LIMIT_UNEXPECTED_FILE');
-    error.message = 'Seuls les fichiers PDF, Word et les images sont autorisés!';
-    cb(error);
-  }
-};
-
-const upload = multer({
-  storage,
-  limits: { fileSize: MAX_FILE_SIZE,
-    files: 1
-  },
-
-  fileFilter,
-}).single('image');
-
-const cleanupUploadedFile = (filename) => {
-  const filePath = path.join(__dirname, '../uploads/support', filename);
-  fs.unlink(filePath, (err) => {
-    if (err) console.error(`Erreur lors de la suppression du fichier : ${filePath}`, err);
-  });
-};
 
 // Contrôleur
 exports.createSupportTicket = catchAsyncError(async (req, res, next) => {
-  upload(req, res, async (err) => {
-    // Gestion des erreurs Multer
-    if (err) {
-      let message;
-      switch (err.code) {
-        case 'LIMIT_PART_COUNT':
-          message = 'Trop de parties dans la requête.';
-          break;
-        case 'LIMIT_FILE_SIZE':
-          message = `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`;
-          break;
-        case 'LIMIT_FILE_COUNT':
-          message = "s'il vous plait, envoyez uniquement un fichier.";
-          break;
-        case 'LIMIT_FIELD_KEY':
-        case 'LIMIT_FIELD_VALUE':
-        case 'LIMIT_FIELD_COUNT':
-          message = 'Le formulaire contient des champs non valides ou trop longs.';
-          break;
-        case 'LIMIT_UNEXPECTED_FILE':
-          message = "s'il vous plait, envoyez uniquement un fichier.";
-        default:
-          message = err.message || 'Erreur lors de l’envoi du fichier.';
-      }
-      return next(new ErrorHandler(message, 400));
-    }
+
+  try {
+    await upload(req, res);
+  } catch (err) {
+    const message = {
+      'LIMIT_FILE_SIZE': `Photo trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
+      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement une photo.",
+      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
+    }[err.code] || 'Erreur lors de l’envoi de la photo.';
+    return next(new ErrorHandler(message, 400));
+  }
 
     const { type, description } = req.body;
 
     // Validation des champs
     if (!type || !description) {
       if (req.file?.filename) {
-        cleanupUploadedFile(req.file.filename);
+        cleanupUploadedFile(req.file.filename, '../uploads/support');
       }
       return next(new ErrorHandler('Le type et la description sont requis.', 400));
     }
 
     if(!allowedTypeSupport.includes(type)) {
       if (req.file?.filename) {
-        cleanupUploadedFile(req.file.filename);
+        cleanupUploadedFile(req.file.filename, '../uploads/support');
       }
       return next(new ErrorHandler("S'il vous plait donner le type de support", 400));
     }
@@ -122,12 +75,12 @@ exports.createSupportTicket = catchAsyncError(async (req, res, next) => {
 
     } catch (dbError) {
       if (req.file?.filename) {
-        cleanupUploadedFile(req.file.filename);
+        cleanupUploadedFile(req.file.filename, '../uploads/support');
       }
       console.error(dbError);
       return next(new ErrorHandler('Erreur lors de la création du ticket.', 500));
     }
-  });
+  
 });
 
 exports.getMySupports = catchAsyncError(async (req, res, next) => {
@@ -209,7 +162,7 @@ exports.deleteSupport = catchAsyncError(async (req, res, next) => {
   }
 
   if (support?.image) {
-    cleanupUploadedFile(support.image);
+    cleanupUploadedFile(support.image, '../uploads/support');
   }
 
   // Supprime le document de la base de données

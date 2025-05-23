@@ -4,92 +4,44 @@ const ErrorHandler = require("../utils/errorHandler");
 const { sendPasswordResetEmail }= require('../utils/sendEmail');
 const signToken = require("../utils/sendToken");
 
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 Mo
 
-const uploadDir = path.join(__dirname, '../uploads/avatar');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Créer le dossier s'il n'existe pas
-    fs.mkdir(uploadDir, { recursive: true }, (err) => {
-      if (err) return cb(err);
-      cb(null, uploadDir);
-    });
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
+const util = require('util');
 
-const allowedTypes = /jpg|jpeg|png/;
 
-const fileFilter = (req, file, cb) => {
-  const ext = path.extname(file.originalname).toLowerCase();
-  const mimetype = allowedTypes.test(file.mimetype);
-  const extname = allowedTypes.test(ext);
+const {  cleanupUploadedFile, createUploader} = require('../utils/UploadHelper');
+// Custom uploader for user avatars
+const upload = util.promisify(
+  createUploader({
+    directory: '../uploads/avatar',
+    maxFileSize: 5 * 1024 * 1024,
+    allowedExtensions: ['jpg', 'jpeg', 'png'],
+    fieldName: 'avatar'
+  })
+);
 
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    const error = new multer.MulterError('LIMIT_UNEXPECTED_FILE');
-    error.message = 'Seuls les images sont autorisé!';
-    cb(error);
-  }
-};
 
-const upload = multer({
-  storage,
-  limits: { fileSize: MAX_FILE_SIZE,
-    files: 1
-  },
 
-  fileFilter,
-}).single('avatar');
 
-const cleanupUploadedFile = (filename) => {
-  const filePath = path.join(__dirname, '../uploads/avatar', filename);
-  fs.unlink(filePath, (err) => {
-    if (err) console.error(`Erreur lors de la suppression du fichier : ${filePath}`, err);
-  });
-};
 exports.RegisterUser = catchAsyncError(async (req, res, next) => {
-    upload(req, res, async (err) => {
-      // Gestion des erreurs Multer
-      if (err) {
-        let message;
-        switch (err.code) {
-          case 'LIMIT_PART_COUNT':
-            message = 'Trop de parties dans la requête.';
-            break;
-          case 'LIMIT_FILE_SIZE':
-            message = `Photo trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`;
-            break;
-          case 'LIMIT_FILE_COUNT':
-            message = "s'il vous plait, envoyez uniquement une photo.";
-            break;
-          case 'LIMIT_FIELD_KEY':
-          case 'LIMIT_FIELD_VALUE':
-          case 'LIMIT_FIELD_COUNT':
-            message = 'Le formulaire contient des champs non valides ou trop longs.';
-            break;
-          case 'LIMIT_UNEXPECTED_FILE':
-            message = "s'il vous plait, envoyez uniquement une photo.";
-            break;
-            default:
-            message = err.message || 'Erreur lors de l’envoi de la photo.';
-        }
-        return next(new ErrorHandler(message, 400));
-      }
+     try {
+       await upload(req, res);
+     } catch (err) {
+       const message = {
+         'LIMIT_FILE_SIZE': `Photo trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
+         'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement une photo.",
+         'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
+       }[err.code] || 'Erreur lors de l’envoi de la photo.';
+       return next(new ErrorHandler(message, 400));
+     }
     
     const { nom, prenom, email, password, telephone   } = req.body;
     const existingUser = await User.findOne({ $or: [{ email }, { telephone }] });
 if (existingUser) {
   if(req.file?.filename) {
-    cleanupUploadedFile(req.file.filename);
+    cleanupUploadedFile(req.file.filename, '../uploads/avatar');
   }
   return next(new ErrorHandler('Email ou téléphone déjà utilisé.', 400));
 }
@@ -100,7 +52,7 @@ if (existingUser) {
       ? parseInt(lastUser.userId.slice(3)) + 1 
       : 1;
     const userId = `USR${String(nextUserNumber).padStart(4, '0')}`;
-    
+
     const user = await User.create({
       userId,
         nom,
@@ -119,13 +71,11 @@ if (existingUser) {
   }
      catch (dbError) {
           if (req.file?.filename) {
-            cleanupUploadedFile(req.file.filename);
+    cleanupUploadedFile(req.file.filename, '../uploads/avatar');
           }
           console.error(dbError);
           return next(new ErrorHandler('Erreur lors de la création du compte.', 500));
         }
-
-  })
 });
 
 
