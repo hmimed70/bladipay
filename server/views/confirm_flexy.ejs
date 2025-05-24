@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demande de recharge reçue</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; padding: 20px; }
+    .container { max-width: 500px; margin: auto; background: #fff; padding: 20px; border-radius: 6px; border: 1px solid #ccc; }
+    h2 { color: #2c3e50; font-size: 20px; margin-bottom: 15px; }
+    p { font-size: 14px; margin: 8px 0; }
+    .footer { margin-top: 20px; font-size: 12px; color: #888; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Demande reçue</h2>
+    <p>Bonjour <strong><%= prenom %> <%= nom %></strong>,</p>
+    <p>Votre demande de recharge a bien été envoyée.</p>
+
+    <p><strong>Détails :</strong></p>
+    <p>Email : <%= email %></p>
+    <p>Téléphone : <%= telephone %></p>
+    <p>Montant : <%= montant_euros || montant_dinars %> <%= montant_euros ? "€" : "DA" %></p>
+    <p>Code suivi : <%= tracking_code %></p>
+
+    <p>Merci de patienter, nous vous informerons dès la livraison.</p>
+    <p>Cordialement,<br>L'équipe <%= nom_site %></p>
+
+    <div class="footer">
+      © <%= new Date().getFullYear() %> <%= nom_site %>
+    </div>
+  </div>
+</body>
+</html>

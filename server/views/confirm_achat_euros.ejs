@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Commande d'euros confirmée</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    h2 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 20px 0;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    p {
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Confirmation de votre commande - Achat d'euros</h2>
+    <p>Bonjour <strong><%= prenom %> <%= nom %></strong>,</p>
+    <p>Nous avons bien reçu votre demande pour un achat de <strong><%= montant_euros %> €</strong>.</p>
+    <ul>
+      <li><strong>Email :</strong> <%= email %></li>
+      <li><strong>Téléphone :</strong> <%= telephone %></li>
+      <li><strong>IBAN :</strong> <%= iban %></li>
+      <li><strong>BaridiMob :</strong> <%= baridiMob %></li>
+      <li><strong>Code de suivi :</strong> <%= tracking_code %></li>
+    </ul>
+    <p>Nous vous informerons dès que le transfert sera effectué.</p>
+    <p>Cordialement,<br />L'équipe <strong><%= nom_site %></strong></p>
+  </div>
+</body>
+</html>

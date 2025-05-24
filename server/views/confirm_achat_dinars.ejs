@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Achat de dinars confirmé</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      background-color: #ffffff;
+      margin: 30px auto;
+      padding: 25px 30px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    h2 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+    p {
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    ul {
+      background-color: #f4f6f8;
+      padding: 15px 20px;
+      border-radius: 6px;
+      list-style-type: none;
+      margin-bottom: 20px;
+    }
+    ul li {
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+    ul li strong {
+      color: #2c3e50;
+    }
+    .note {
+      font-style: italic;
+      background: #eaf4ff;
+      padding: 12px 15px;
+      border-left: 4px solid #2196f3;
+      margin-bottom: 20px;
+      font-size: 15px;
+      color: #1a73e8;
+    }
+    .footer {
+      font-size: 13px;
+      color: #999;
+      text-align: center;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Confirmation de votre commande - Achat de dinars</h2>
+    
+    <p>Bonjour <strong><%= prenom %> <%= nom %></strong>,</p>
+    
+    <p>Nous avons bien reçu votre commande de <strong><%= montant_euros %> €</strong> pour un transfert en dinars.</p>
+
+    <ul>
+      <li><strong>Nom :</strong> <%= nom %></li>
+      <li><strong>Prénom :</strong> <%= prenom %></li>
+      <li><strong>Email :</strong> <%= email %></li>
+      <li><strong>Téléphone :</strong> <%= telephone %></li>
+      <li><strong>Numéro BaridiMob :</strong> <%= baridiMob %></li>
+      <li><strong>Montant payé :</strong> <%= montant_euros %> €</li>
+      <li><strong>Montant reçu :</strong> <%= montant_dinars %> DA</li>
+      <li><strong>Code de suivi :</strong> <%= tracking_code %></li>
+    </ul>
+
+    <p class="note">
+      <% if (montant_euros < 400) { %>
+        Transfert via BaridiMob (3-6h)
+      <% } else { %>
+        Merci d'envoyer un chèque postal (24-48h)
+      <% } %>
+    </p>
+
+    <p>Cordialement,<br>L'équipe <strong><%= nom_site %></strong></p>
+
+    <div class="footer">
+      © <%= new Date().getFullYear() %> <%= nom_site %> – Tous droits réservés.
+    </div>
+  </div>
+</body>
+</html>

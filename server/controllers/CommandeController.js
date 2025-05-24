@@ -18,7 +18,7 @@ const upload = util.promisify(
     directory: '../uploads/commande',
     maxFileSize: 5 * 1024 * 1024,
     allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
-    fieldName: 'image'
+    fieldName: 'paymentReceiptUrl'
   })
 );
 
@@ -277,39 +277,6 @@ exports.deleteCommande = catchAsyncError(async (req, res, next) => {
   });
 });
 
-exports.ConfirmRecharge = catchAsyncError(async (req, res, next) => {
-  try {
-    await upload(req, res);
-  } catch (err) {
-    const message = {
-      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
-      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
-      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
-    }[err.code] || 'Erreur lors de l’envoi de la photo.';
-    return next(new ErrorHandler(message, 400));
-  }
-  try {
-    const commande = await Commande.findById(req.params.id);
-    if (!commande) {
-      return next(new ErrorHandler('Commande introuvable', 404));
-    }
-    if (!req.file?.filename) {
-      return next(new ErrorHandler('Pièce jointe manquante', 400));
-    }
-    commande.paymentStatus = 'confirmee';
-    commande.paymentReceiptUrl = req.file.filename;
-    await commande.save();
-    res.status(200).json({
-      success: true,
-      message: 'Commande confirmée avec succès',
-    });
-  } catch (error) {
-    if (req.file?.filename) {
-      cleanupUploadedFile(req.file.filename, '../uploads/commande');
-    }
-    return next(new ErrorHandler(error.message, 400));
-  }
-});
 const validateCommandeInput = (body, type) => {
   const requiredUserFields = ['nom', 'prenom', 'email', 'telephone'];
   const requiredAmountFields = ['value', 'currency'];
@@ -353,7 +320,68 @@ const validateCommandeInput = (body, type) => {
 };
 
 
-exports.ConfirmAchat = catchAsyncError(async (req, res, next) => {
+
+exports.confirmCommande = catchAsyncError(async (req, res, next) => {
+  let uploaded = false;
+
+  try {
+    // Attempt upload (only relevant for some types)
+    await upload(req, res);
+    uploaded = true;
+  } catch (err) {
+    const message = {
+      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
+      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
+      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
+    }[err.code] || 'Erreur lors de l’envoi de la photo.';
+    return next(new ErrorHandler(message, 400));
+  }
+
+  try {
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      if (uploaded && req.file?.filename) cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      return next(new ErrorHandler('Commande introuvable', 404));
+    }
+
+    // 🚫 Only allow transition if already confirmed
+    if (commande.paymentStatus !== 'confirmee') {
+      if (uploaded && req.file?.filename) cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      return next(new ErrorHandler('Vous ne pouvez livrer une commande que si elle est confirmée', 400));
+    }
+
+    // ✅ Handle type-specific delivery logic
+    if (commande.type === 'recharge' || commande.type === 'achat_dinars') {
+      if (!req.file?.filename) {
+        return next(new ErrorHandler('Pièce jointe requise pour cette commande', 400));
+      }
+      commande.paymentReceiptUrl = req.file.filename;
+    } else if (commande.type !== 'achat_euros') {
+      if (uploaded && req.file?.filename) cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      return next(new ErrorHandler('Type de commande non supporté', 400));
+    }
+    commande.paymentReceiptUrl = req.file.filename;
+
+    commande.paymentStatus = 'livree';
+    commande.livreeAt = Date.now();
+    await commande.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Commande livrée avec succès',
+    });
+
+  } catch (error) {
+    console.error(error);
+    if (uploaded && req.file?.filename) cleanupUploadedFile(req.file.filename, '../uploads/commande');
+    return next(new ErrorHandler("Une erreur s’est produite", 400));
+  }
+});
+
+
+
+
+exports.requestConfirmAchatEuros = catchAsyncError(async (req, res, next) => {
   try {
     await upload(req, res);
   } catch (err) {
@@ -364,16 +392,28 @@ exports.ConfirmAchat = catchAsyncError(async (req, res, next) => {
     }[err.code] || 'Erreur lors de l’envoi de la photo.';
     return next(new ErrorHandler(message, 400));
   }
+  
   try {
-    const commande = await Commande.findById(req.params.id);
+    const commande = await Commande.findOne({ _id: req.params.id, clientId: req?.user?.id });
     if (!commande) {
+      if (req.file?.filename) {
+        cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      }
       return next(new ErrorHandler('Commande introuvable', 404));
     }
+    if (commande.paymentStatus === 'livree') {
+      return next(new ErrorHandler('Commande déjà livrer', 400));
+    }
+    if(commande.paymentStatus === 'confirmee') {
+      return next(new ErrorHandler('Commande déjà confirmée', 400));
+    }
     if (!req.file?.filename) {
+
       return next(new ErrorHandler('Pièce jointe manquante', 400));
     }
     commande.paymentStatus = 'confirmee';
     commande.paymentReceiptUrl = req.file.filename;
+    commande.confirmedAt = Date.now();
     await commande.save();
     res.status(200).json({
       success: true,
@@ -387,83 +427,3 @@ exports.ConfirmAchat = catchAsyncError(async (req, res, next) => {
   }
 });
 
-exports.ConfirmAchatEuros = catchAsyncError(async (req, res, next) => {
-  try {
-    await upload(req, res);
-  } catch (err) {
-    const message = {
-      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
-      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
-      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
-    }[err.code] || 'Erreur lors de l’envoi de la photo.';
-    return next(new ErrorHandler(message, 400));
-  }
-  try {
-    const commande = await Commande.findById(req.params.id);
-    if (!commande) {
-      if (req.file?.filename) {
-        cleanupUploadedFile(req.file.filename, '../uploads/commande');
-      }
-      return next(new ErrorHandler('Commande introuvable', 404));
-    }
-    if (!req.file?.filename) {
-      if (req.file?.filename) {
-        cleanupUploadedFile(req.file.filename, '../uploads/commande');
-      }
-      return next(new ErrorHandler('Pièce jointe manquante', 400));
-    }
-    commande.paymentStatus = 'confirmee';
-    commande.paymentReceiptUrl = req.file.filename;
-    await commande.save();
-    res.status(200).json({
-      success: true,
-      message: 'Commande confirmée avec succès',
-    });
-  } catch (error) {
-    if (req.file?.filename) {
-      cleanupUploadedFile(req.file.filename, '../uploads/commande');
-    }
-    return next(new ErrorHandler(error.message, 400));
-  }
-});
-
-
-exports.ConfirmAchatDinars = catchAsyncError(async (req, res, next) => {
-  try {
-    await upload(req, res);
-  } catch (err) {
-    const message = {
-      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
-      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
-      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
-    }[err.code] || 'Erreur lors de l’envoi de la photo.';
-    return next(new ErrorHandler(message, 400));
-  }
-  try {
-    const commande = await Commande.findById(req.params.id);
-    if (!commande) {
-      if (req.file?.filename) {
-        cleanupUploadedFile(req.file.filename, '../uploads/commande');
-      }
-      return next(new ErrorHandler('Commande introuvable', 404));
-    }
-    if (!req.file?.filename) {
-      if (req.file?.filename) {
-        cleanupUploadedFile(req.file.filename, '../uploads/commande');
-      }
-      return next(new ErrorHandler('Pièce jointe manquante', 400));
-    }
-    commande.paymentStatus = 'confirmee';
-    commande.paymentReceiptUrl = req.file.filename;
-    await commande.save();
-    res.status(200).json({
-      success: true,
-      message: 'Commande confirmée avec succès',
-    });
-  } catch (error) {
-    if (req.file?.filename) {
-      cleanupUploadedFile(req.file.filename, '../uploads/commande');
-    }
-    return next(new ErrorHandler(error.message, 400));
-  }
-});

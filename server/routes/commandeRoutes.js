@@ -8,6 +8,8 @@ const {
   getCommande,
   getMyCommandes,
   deleteCommande,
+  confirmCommande,
+  requestConfirmAchatEuros,
 
 } = require('../controllers/CommandeController');
 
@@ -21,6 +23,9 @@ router
   .route('/my_commandes')
   .get(isAuthenticated, isUser, getMyCommandes); // Admin only
 
+router.put('/confirm_commande/:id', isAuthenticated, isAdmin, confirmCommande);
+
+router.put('/request_confirm_commande/:id', isAuthenticated, isUser, requestConfirmAchatEuros);
 
 router
   .route('/recharge')

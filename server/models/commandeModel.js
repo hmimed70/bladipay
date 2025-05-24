@@ -75,6 +75,7 @@ telephone: {
     enum: ['en_attente', 'confirmee',  'livree', 'annulee'],
     default: 'en_attente'
   },
+  confirmedAt: Date,
   livreeAt: Date,
   createdAt: {
     type: Date,

@@ -1,0 +1,56 @@
+<!-- livrer_recharge.ejs -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Recharge effectuée</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+      background-color: #f9f9f9;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    p {
+      line-height: 1.6;
+    }
+    .footer {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #999;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Recharge effectuée avec succès</h2>
+
+    <p>Bonjour <strong><%= prenom %> <%= nom %></strong>,</p>
+
+    <p>Votre recharge de <strong><%= montant_dinars %> DA</strong> a été livrée avec succès.</p>
+
+    <p>Vous trouverez ci-joint votre reçu de paiement au format PDF.</p>
+
+    <p>Merci pour votre confiance.</p>
+
+    <p>Cordialement,<br>
+    L'équipe <strong><%= nom_site %></strong></p>
+
+    <div class="footer">
+      © <%= new Date().getFullYear() %> <%= nom_site %> – Tous droits réservés.
+    </div>
+  </div>
+</body>
+</html>
