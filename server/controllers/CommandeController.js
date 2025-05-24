@@ -4,38 +4,40 @@ const Commande = require('../models/commandeModel');
 const catchAsyncError = require('../middlewares/catchAsyncError');
 const ErrorHandler = require('../utils/errorHandler');
 const ApiFeatures = require('../utils/Features');
-const { generateUniqueTrackingCode } = require('../utils/helpers');
+const { generateUniqueTrackingCode, areFloatsEqual } = require('../utils/helpers');
+
 
 // Helper: Validate required fields based on type
 
 
-// --- Create Controllers ---
 exports.createRecharge = catchAsyncError(async (req, res, next) => {
   const type = 'recharge';
-  const { user, amountPaid, amountReceived, paymentMethod } = req.body;
-
+  const { user, amountPaid, amountReceived } = req.body;
   const errors = validateCommandeInput(req.body, type);
   if (errors.length > 0) {
     return next(new ErrorHandler(errors.join(', '), 400));
   }
+const paidValue = parseFloat(amountPaid.value);
+const receivedValue = parseFloat(amountReceived.value);
 
-  // Load conversion rates from Parametre
+if (isNaN(paidValue) || isNaN(receivedValue)) {
+  return next(new ErrorHandler("Montants invalides fournis.", 400));
+}
+
   const param = await Parametre.findOne();
   if (!param) {
     return next(new ErrorHandler('Paramètres non définis.', 500));
   }
+  console.log(param.rechargeOptions)
+  const option = param.rechargeOptions.find(
+    (opt) => opt.eur === receivedValue
+  );
 
-  // Verify conversion (DZD → EUR)
-  const expectedMap = {
-    500: 2.99,
-    750: 3.99,
-    1000: 4.95,
-    1500: 7.99,
-    2000: 9.99,
-  };
+  if (!option) {
+    return next(new ErrorHandler('Montant non pris en charge.', 400));
+  }
 
-  const expectedEuro = expectedMap[amountPaid.value];
-  if (!expectedEuro || expectedEuro !== parseFloat(amountReceived.value)) {
+  if (option.dzd !== paidValue) {
     return next(new ErrorHandler('Montant incohérent avec les paramètres de recharge.', 400));
   }
 
@@ -46,8 +48,14 @@ exports.createRecharge = catchAsyncError(async (req, res, next) => {
     user,
     trackingCode,
     clientId: req?.user?.id,
-    amountPaid,
-    amountReceived,
+    amountPaid: {
+      value: paidValue,
+      currency: 'DZD'
+    },
+    amountReceived: {
+      value: receivedValue,
+      currency: 'EUR'
+    },
     paymentMethod: 'card',
     paymentStatus: 'confirmee',
     type,
@@ -60,10 +68,19 @@ exports.createRecharge = catchAsyncError(async (req, res, next) => {
   });
 });
 
+
 exports.createAchatEuros = catchAsyncError(async (req, res, next) => {
   const type = 'achat_euros';
   const errors = validateCommandeInput(req.body, type);
-  const { user, amountPaid, amountReceived, paymentMethod } = req.body;
+  const { user, amountPaid, amountReceived } = req.body;
+
+
+  const paidValue = parseFloat(amountPaid.value); //euros
+const receivedValue = parseFloat(amountReceived.value); //dinars
+
+if (isNaN(paidValue) || isNaN(receivedValue)) {
+  return next(new ErrorHandler("Montants invalides fournis.", 400));
+}
 
   if (errors.length > 0) {
     return next(new ErrorHandler(errors.join(', '), 400));
@@ -73,21 +90,30 @@ exports.createAchatEuros = catchAsyncError(async (req, res, next) => {
   if (!param) {
     return next(new ErrorHandler('Paramètres non définis.', 500));
   }
-
+  //Achat Euro : send baridimob to client , then client send da, admin send euro 
+       //"euroToDinarRate": 260,
+       // "dinarToEuroRate": 0.00387597,
+        //amountReceived: dinars amountWillpaid: euro 
   // Validate amountPaid (EUR) vs amountReceived (DA)
-  const expectedDA = amountPaid.value * param.achat_euros_rate;
-  if (parseInt(amountReceived.value) !== parseInt(expectedDA)) {
-    return next(new ErrorHandler(`Montant reçu ne correspond pas au taux de change actuel: ${param.achat_euros_rate}`, 400));
-  }
-
+ const expectedEuro = (receivedValue / param.achatEuros).toFixed(2);
+console.log(receivedValue,param.achatEuros,  expectedEuro)
+if (!areFloatsEqual(paidValue, expectedEuro)) {
+  return next(new ErrorHandler("`Montant reçu ne correspond pas au taux de change actuel", 400));
+}
   const trackingCode = await generateUniqueTrackingCode();
 
   const commande = await Commande.create({
     user,
     trackingCode,
     clientId: req?.user?.id,
-    amountPaid,
-    amountReceived,
+        amountPaid: {
+      value: paidValue,
+      currency: 'EUR'
+    },
+    amountReceived: {
+      value: receivedValue,
+      currency: 'DZD'
+    },
     paymentMethod: 'baridimob',
     paymentStatus: 'en_attente',
     type,
@@ -105,6 +131,12 @@ exports.createAchatDinars = catchAsyncError(async (req, res, next) => {
   const type = 'achat_dinars';
   const errors = validateCommandeInput(req.body, type);
   const { user, amountPaid, amountReceived, paymentMethod } = req.body;
+  const paidValue = parseFloat(amountPaid.value); //dinars
+const receivedValue = parseFloat(amountReceived.value); //euros
+
+if (isNaN(paidValue) || isNaN(receivedValue)) {
+  return next(new ErrorHandler("Montants invalides fournis.", 400));
+}
 
   if (errors.length > 0) {
     return next(new ErrorHandler(errors.join(', '), 400));
@@ -114,23 +146,30 @@ exports.createAchatDinars = catchAsyncError(async (req, res, next) => {
   if (!param) {
     return next(new ErrorHandler('Paramètres non définis.', 500));
   }
-
-  // Validate amountPaid (DA) vs amountReceived (EUR)
-  const expectedDA = amountReceived.value * param.achat_dinars_rate;
-  if (parseInt(amountPaid.value) !== parseInt(expectedDA)) {
-    return next(new ErrorHandler(`Montant payé ne correspond pas au taux de change actuel: ${param.achat_dinars_rate}`, 400));
-  }
-
-  // Optional: check daily limit logic here using aggregate
-
+  //Achat Euro : send baridimob to client , then client send da, admin send euro 
+       //"euroToDinarRate": 260,
+       // "dinarToEuroRate": 0.00387597,
+        //amountReceived: dinars amountWillpaid: euro 
+  // Validate amountPaid (EUR) vs amountReceived (DA)
+ const expectedDinars = (receivedValue * param.achatDinars).toFixed(2);
+console.log(receivedValue,param.expectedDinars,  expectedDinars)
+if (!areFloatsEqual(paidValue, expectedDinars)) {
+  return next(new ErrorHandler("`Montant reçu ne correspond pas au taux de change actuel", 400));
+}
   const trackingCode = await generateUniqueTrackingCode();
 
   const commande = await Commande.create({
     user,
     trackingCode,
     clientId: req?.user?.id,
-    amountPaid,
-    amountReceived,
+    amountPaid: {
+      value: paidValue,
+      currency: 'DZD'
+    },
+    amountReceived: {
+      value: receivedValue,
+      currency: 'EUR'
+    },
     paymentMethod: 'card',
     paymentStatus: 'confirmee',
     type,
@@ -167,7 +206,28 @@ exports.getAllCommandes = catchAsyncError(async (req, res, next) => {
     resultPerPage,
   });
 });
+exports.getMyCommandes = catchAsyncError(async (req, res, next) => {
+  const resultPerPage = req.query.limit ? parseInt(req.query.limit, 10) : 10;
+  const commandesCount = await Commande.countDocuments({ clientId: req?.user?._id });
 
+  const apiFeature = new ApiFeatures(Commande.find({clientId: req?.user?._id}), req.query)
+    .search()
+    .filter()
+    .sort()
+    .limitFields()
+    .pagination(resultPerPage, req.query.page);
+
+  const commandes = await apiFeature.query;
+  const filteredCount = await Commande.countDocuments(apiFeature.query.getFilter());
+
+  res.status(200).json({
+    success: true,
+    commandes,
+    commandesCount,
+    filteredCount,
+    resultPerPage,
+  });
+});
 // --- Get One Commande ---
 exports.getCommande = catchAsyncError(async (req, res, next) => {
     let commande;
@@ -225,19 +285,24 @@ const validateCommandeInput = (body, type) => {
     errors.push(`Champ requis manquant: amountReceived.value / currency`);
   }
 
-  if (!body.paymentMethod) {
-    errors.push(`Champ requis manquant: paymentMethod`);
-  }
 /*
   if (type === 'recharge' && !body.user.baridiMob) {
     errors.push(`Champ requis manquant: user.baridiMob pour recharge`);
   }
 */
-  if ((type === 'achat_euros' || type === 'achat_dinars') && !body.user.iban) {
-    errors.push(`Champ requis manquant: IBAN `);
+ if (type === 'achat_euros') {
+  if (!body.user.baridiMob) {
+    errors.push("Champ requis manquant: BaridiMob");
   }
-    if ((type === 'achat_euros' || type === 'achat_dinars') && !body.user.baridiMob ) {
-    errors.push(`Champ requis manquant: BaridiMob ou RIP`);
+  if (!body.user.iban) {
+    errors.push("Champ requis manquant: IBAN");
+  }
+}
+    if ((type === 'achat_dinars') && !body.user.baridiMob) {
+    errors.push(`Champ requis manquant: BaridiMob`);
+  }
+      if ((type === 'recharge') && !body.user.baridiMob ) {
+    errors.push(`Champ requis manquant: BaridiMob`);
   }
   return errors;
 };

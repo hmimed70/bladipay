@@ -10,8 +10,11 @@ exports.splitName = (name) => {
   return {firstname: firstName ? (firstName) : '', familyname: lastName.length > 0 ? lastName.join(' ') : '' };
 }
 
+exports.areFloatsEqual = (a, b, precision = 2) => {
+  return Math.abs(a - b) < Math.pow(10, -precision);
+}
 
-exports.generateTrackingCode = () => {
+const generateTrackingCode = () => {
   const prefix = 'CMD';
   const timestamp = Date.now().toString(36); // base36 timestamp
   const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 random chars

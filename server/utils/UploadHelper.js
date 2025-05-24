@@ -2,11 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
+
 exports.createUploader = ({
-    directory = '../uploads',
-    maxFileSize = 5 * 1024 * 1024,
-    allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'],
-    fieldName = 'file'
+    directory = '../uploads', //upload destination
+    maxFileSize = 5 * 1024 * 1024,//limit file Size
+    allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'], //allowed files
+    fieldName = 'file' //Field name in formData
 }) => {
     const uploadDir = path.join(__dirname, directory);
 

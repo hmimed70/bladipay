@@ -6,10 +6,11 @@ const ErrorHandler = require('../utils/errorHandler');
 exports.setParameters = catchAsyncError(async (req, res, next) => {
   const {
     rechargeOptions,
-    euroToDinarRate,
-    dinarToEuroRate,
+    achatDinars,
+    achatEuros,
     limitAchatDinarsJour,
-    limitAchatEuroJour
+    limitAchatEuroJour,
+    baridimob_bladipay
   } = req.body;
 
   const existing = await Parameter.findOne();
@@ -17,18 +18,20 @@ exports.setParameters = catchAsyncError(async (req, res, next) => {
   let params;
   if (existing) {
     existing.rechargeOptions = rechargeOptions;
-    existing.euroToDinarRate = euroToDinarRate;
-    existing.dinarToEuroRate = dinarToEuroRate;
+    existing.achatEuros = achatEuros;
+    existing.achatDinars = achatDinars;
     existing.limitAchatDinarsJour = limitAchatDinarsJour;
     existing.limitAchatEuroJour = limitAchatEuroJour;
+    existing.baridimob_bladipay = baridimob_bladipay;
     params = await existing.save();
   } else {
     params = await Parameter.create({
       rechargeOptions,
-      euroToDinarRate,
-      dinarToEuroRate,
+      achatEuros,
+      achatDinars,
       limitAchatDinarsJour,
-      limitAchatEuroJour
+      limitAchatEuroJour,
+      baridimob_bladipay
     });
   }
 

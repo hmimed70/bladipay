@@ -6,16 +6,21 @@ const {
   createAchatDinars,
   getAllCommandes,
   getCommande,
+  getMyCommandes,
   deleteCommande,
+
 } = require('../controllers/CommandeController');
 
-const { isAuthenticated, isAdmin } = require('../middlewares/auth');
+const { isAuthenticated, isAdmin, isUser } = require('../middlewares/auth');
 
 // Apply authentication middleware where necessary
 router
   .route('/')
   .get(isAuthenticated, isAdmin, getAllCommandes); // Admin only
-  
+router
+  .route('/my_commandes')
+  .get(isAuthenticated, isUser, getMyCommandes); // Admin only
+
 
 router
   .route('/recharge')

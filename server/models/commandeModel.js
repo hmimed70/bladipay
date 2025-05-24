@@ -28,13 +28,11 @@ const commandeSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, "S'il vous plaît entrez adresse e-mail de beneficiaire"],
-    unique: true,
     validate: [validator.isEmail, "S'il vous plaît entrez une adresse e-mail valide"],
   },
 telephone: {
   type: String,
   required: [true, "S'il vous plaît entrez le numéro de téléphone du bénéficiaire"],
-  unique: true,
   validate: {
     validator: function (v) {
       return /^(?:(?:\+213|0)(5|6|7)[0-9]{8}|(?:\+33|0)[1-9][0-9]{8})$/.test(v);
@@ -64,7 +62,8 @@ telephone: {
   paymentMethod: {
     type: String,
     enum: ['card', 'baridimob', 'cheque'],
-    required: true
+    //required: true
+    default: 'card'
   },
   paymentStatus: {
     type: String,
