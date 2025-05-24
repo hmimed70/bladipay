@@ -4,6 +4,8 @@ import Image from "next/image"
 import { ArrowRight, RefreshCw, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
+import Flexy from '@/public/flexy.jpg';
+import Echange from '@/public/echange.jpg';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -47,6 +49,7 @@ export default function Services() {
               description:
                 "Contrairement à d'autres services, BladiPay permet des transferts dans les deux sens : de l'Europe vers l'Algérie et de l'Algérie vers l'Europe, répondant ainsi à tous vos besoins financiers transfrontaliers.",
               imgAlt: "Transferts Bidirectionnels",
+              imageSrc : Echange
             },
             {
               id: 2,
@@ -55,6 +58,8 @@ export default function Services() {
               description:
                 "Offrez du crédit téléphonique directement sur le mobile de vos proches en Algérie depuis l'Europe. Un service pratique qui maintient vos connexions familiales même dans l'urgence.",
               imgAlt: "Recharge Mobile Instantanée",
+              imageSrc : Flexy
+
             },
           ].map((service, i) => (
             <motion.div
@@ -75,10 +80,10 @@ export default function Services() {
               <p className="text-gray-700 mb-6">{service.description}</p>
               <div className="relative h-60 w-full rounded-lg overflow-hidden mb-6">
                 <Image
-                  src="/placeholder.svg?height=400&width=600"
+                  src={service.imageSrc}
                   alt={service.imgAlt}
                   fill
-                  className="object-cover"
+                  className="object-contain"
                 />
               </div>
               <Button className="bg-gradient-to-r from-[#FFB300] to-[#1E88E5] text-white hover:opacity-90 flex items-center">

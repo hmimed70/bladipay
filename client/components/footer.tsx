@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
+import { Facebook, Twitter, Instagram, Linkedin, ArrowRight } from "lucide-react"
 
 export default function Footer() {
   return (
@@ -36,52 +36,61 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-lg font-semibold mb-4">Services</h4>
+            <h4 className="text-lg font-semibold mb-4">Liens rapides</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Transferts d'argent
+                <Link href="#about" className="text-gray-400 hover:text-white transition-colors flex justify-start items-center gap-x-2">
+                                    <ArrowRight className="h-4 w-4" />
+
+                  A propos
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Recharge mobile
+                <Link href="#services" className="text-gray-400 hover:text-white transition-colors flex justify-start items-center gap-x-2">
+                                                      <ArrowRight className="h-4 w-4" />
+
+                  Services
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Paiements internationaux
+                <Link href="#testimonials" className="text-gray-400 hover:text-white transition-colors flex justify-start items-center gap-x-2">
+
+                                    <ArrowRight className="h-4 w-4" />
+
+                  Témoignages
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Conversion de devises
+                <Link href="#contact" className="text-gray-400 hover:text-white transition-colors flex justify-start items-center gap-x-2">
+                                    <ArrowRight className="h-4 w-4" />
+
+                 Contact
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-lg font-semibold mb-4">Entreprise</h4>
+            <h4 className="text-lg font-semibold mb-4">Nos services</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="#about" className="text-gray-400 hover:text-white transition-colors">
-                  À propos
+                <Link href="#about" className="text-gray-400 hover:text-white transition-colors flex justify-start items-center gap-x-2">
+                                                     <ArrowRight className="h-4 w-4" />
+
+                  Recharge Mobile
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Carrières
+                <Link href="#" className="text-gray-400 hover:text-white transition-colors flex justify-start items-center gap-x-2">
+                                                      <ArrowRight className="h-4 w-4" />
+
+                  Achat dinar
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="#contact" className="text-gray-400 hover:text-white transition-colors">
-                  Contact
+                <Link href="#" className="text-gray-400 hover:text-white transition-colors flex justify-start items-center gap-x-2">
+                                    <ArrowRight className="h-4 w-4" />
+                  Achat Euro
                 </Link>
               </li>
             </ul>

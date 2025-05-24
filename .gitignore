@@ -6,7 +6,7 @@
 node_modules/client
 node_modules/server
 # next.js
-/.next/
+client/.next/
 /out/
 */node_modules
 # production
