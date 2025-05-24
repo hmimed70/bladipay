@@ -6,8 +6,21 @@ const ErrorHandler = require('../utils/errorHandler');
 const ApiFeatures = require('../utils/Features');
 const { generateUniqueTrackingCode, areFloatsEqual } = require('../utils/helpers');
 
+const util = require('util');
 
-// Helper: Validate required fields based on type
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+
+const { cleanupUploadedFile, createUploader } = require('../utils/UploadHelper');
+
+const upload = util.promisify(
+  createUploader({
+    directory: '../uploads/commande',
+    maxFileSize: 5 * 1024 * 1024,
+    allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
+    fieldName: 'image'
+  })
+);
 
 
 exports.createRecharge = catchAsyncError(async (req, res, next) => {
@@ -17,12 +30,12 @@ exports.createRecharge = catchAsyncError(async (req, res, next) => {
   if (errors.length > 0) {
     return next(new ErrorHandler(errors.join(', '), 400));
   }
-const paidValue = parseFloat(amountPaid.value);
-const receivedValue = parseFloat(amountReceived.value);
+  const paidValue = parseFloat(amountPaid.value);
+  const receivedValue = parseFloat(amountReceived.value);
 
-if (isNaN(paidValue) || isNaN(receivedValue)) {
-  return next(new ErrorHandler("Montants invalides fournis.", 400));
-}
+  if (isNaN(paidValue) || isNaN(receivedValue)) {
+    return next(new ErrorHandler("Montants invalides fournis.", 400));
+  }
 
   const param = await Parametre.findOne();
   if (!param) {
@@ -76,11 +89,11 @@ exports.createAchatEuros = catchAsyncError(async (req, res, next) => {
 
 
   const paidValue = parseFloat(amountPaid.value); //euros
-const receivedValue = parseFloat(amountReceived.value); //dinars
+  const receivedValue = parseFloat(amountReceived.value); //dinars
 
-if (isNaN(paidValue) || isNaN(receivedValue)) {
-  return next(new ErrorHandler("Montants invalides fournis.", 400));
-}
+  if (isNaN(paidValue) || isNaN(receivedValue)) {
+    return next(new ErrorHandler("Montants invalides fournis.", 400));
+  }
 
   if (errors.length > 0) {
     return next(new ErrorHandler(errors.join(', '), 400));
@@ -91,22 +104,22 @@ if (isNaN(paidValue) || isNaN(receivedValue)) {
     return next(new ErrorHandler('Paramètres non définis.', 500));
   }
   //Achat Euro : send baridimob to client , then client send da, admin send euro 
-       //"euroToDinarRate": 260,
-       // "dinarToEuroRate": 0.00387597,
-        //amountReceived: dinars amountWillpaid: euro 
+  //"euroToDinarRate": 260,
+  // "dinarToEuroRate": 0.00387597,
+  //amountReceived: dinars amountWillpaid: euro 
   // Validate amountPaid (EUR) vs amountReceived (DA)
- const expectedEuro = (receivedValue / param.achatEuros).toFixed(2);
-console.log(receivedValue,param.achatEuros,  expectedEuro)
-if (!areFloatsEqual(paidValue, expectedEuro)) {
-  return next(new ErrorHandler("`Montant reçu ne correspond pas au taux de change actuel", 400));
-}
+  const expectedEuro = (receivedValue / param.achatEuros).toFixed(2);
+  console.log(receivedValue, param.achatEuros, expectedEuro)
+  if (!areFloatsEqual(paidValue, expectedEuro)) {
+    return next(new ErrorHandler("`Montant reçu ne correspond pas au taux de change actuel", 400));
+  }
   const trackingCode = await generateUniqueTrackingCode();
 
   const commande = await Commande.create({
     user,
     trackingCode,
     clientId: req?.user?.id,
-        amountPaid: {
+    amountPaid: {
       value: paidValue,
       currency: 'EUR'
     },
@@ -132,11 +145,11 @@ exports.createAchatDinars = catchAsyncError(async (req, res, next) => {
   const errors = validateCommandeInput(req.body, type);
   const { user, amountPaid, amountReceived, paymentMethod } = req.body;
   const paidValue = parseFloat(amountPaid.value); //dinars
-const receivedValue = parseFloat(amountReceived.value); //euros
+  const receivedValue = parseFloat(amountReceived.value); //euros
 
-if (isNaN(paidValue) || isNaN(receivedValue)) {
-  return next(new ErrorHandler("Montants invalides fournis.", 400));
-}
+  if (isNaN(paidValue) || isNaN(receivedValue)) {
+    return next(new ErrorHandler("Montants invalides fournis.", 400));
+  }
 
   if (errors.length > 0) {
     return next(new ErrorHandler(errors.join(', '), 400));
@@ -147,15 +160,15 @@ if (isNaN(paidValue) || isNaN(receivedValue)) {
     return next(new ErrorHandler('Paramètres non définis.', 500));
   }
   //Achat Euro : send baridimob to client , then client send da, admin send euro 
-       //"euroToDinarRate": 260,
-       // "dinarToEuroRate": 0.00387597,
-        //amountReceived: dinars amountWillpaid: euro 
+  //"euroToDinarRate": 260,
+  // "dinarToEuroRate": 0.00387597,
+  //amountReceived: dinars amountWillpaid: euro 
   // Validate amountPaid (EUR) vs amountReceived (DA)
- const expectedDinars = (receivedValue * param.achatDinars).toFixed(2);
-console.log(receivedValue,param.expectedDinars,  expectedDinars)
-if (!areFloatsEqual(paidValue, expectedDinars)) {
-  return next(new ErrorHandler("`Montant reçu ne correspond pas au taux de change actuel", 400));
-}
+  const expectedDinars = (receivedValue * param.achatDinars).toFixed(2);
+  console.log(receivedValue, param.expectedDinars, expectedDinars)
+  if (!areFloatsEqual(paidValue, expectedDinars)) {
+    return next(new ErrorHandler("`Montant reçu ne correspond pas au taux de change actuel", 400));
+  }
   const trackingCode = await generateUniqueTrackingCode();
 
   const commande = await Commande.create({
@@ -210,7 +223,7 @@ exports.getMyCommandes = catchAsyncError(async (req, res, next) => {
   const resultPerPage = req.query.limit ? parseInt(req.query.limit, 10) : 10;
   const commandesCount = await Commande.countDocuments({ clientId: req?.user?._id });
 
-  const apiFeature = new ApiFeatures(Commande.find({clientId: req?.user?._id}), req.query)
+  const apiFeature = new ApiFeatures(Commande.find({ clientId: req?.user?._id }), req.query)
     .search()
     .filter()
     .sort()
@@ -230,16 +243,16 @@ exports.getMyCommandes = catchAsyncError(async (req, res, next) => {
 });
 // --- Get One Commande ---
 exports.getCommande = catchAsyncError(async (req, res, next) => {
-    let commande;
-    if(req.user.role === 'client') {
-        commande = await Commande.findOne({ _id: req.params.id, clientId: req.user.id }).populate('clientId');
-    }
-    else if(req.user.role === 'admin') {
-        commande = await Commande.findOne({ _id: req.params.id }).populate('user');
-    }
-    else {
-        return next(new ErrorHandler('Vous devez vous connecter', 401));
-    }
+  let commande;
+  if (req.user.role === 'client') {
+    commande = await Commande.findOne({ _id: req.params.id, clientId: req.user.id }).populate('clientId');
+  }
+  else if (req.user.role === 'admin') {
+    commande = await Commande.findOne({ _id: req.params.id }).populate('user');
+  }
+  else {
+    return next(new ErrorHandler('Vous devez vous connecter', 401));
+  }
   if (!commande) {
     return next(new ErrorHandler('Commande introuvable', 404));
   }
@@ -264,7 +277,39 @@ exports.deleteCommande = catchAsyncError(async (req, res, next) => {
   });
 });
 
-
+exports.ConfirmRecharge = catchAsyncError(async (req, res, next) => {
+  try {
+    await upload(req, res);
+  } catch (err) {
+    const message = {
+      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
+      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
+      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
+    }[err.code] || 'Erreur lors de l’envoi de la photo.';
+    return next(new ErrorHandler(message, 400));
+  }
+  try {
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return next(new ErrorHandler('Commande introuvable', 404));
+    }
+    if (!req.file?.filename) {
+      return next(new ErrorHandler('Pièce jointe manquante', 400));
+    }
+    commande.paymentStatus = 'confirmee';
+    commande.paymentReceiptUrl = req.file.filename;
+    await commande.save();
+    res.status(200).json({
+      success: true,
+      message: 'Commande confirmée avec succès',
+    });
+  } catch (error) {
+    if (req.file?.filename) {
+      cleanupUploadedFile(req.file.filename, '../uploads/commande');
+    }
+    return next(new ErrorHandler(error.message, 400));
+  }
+});
 const validateCommandeInput = (body, type) => {
   const requiredUserFields = ['nom', 'prenom', 'email', 'telephone'];
   const requiredAmountFields = ['value', 'currency'];
@@ -285,24 +330,140 @@ const validateCommandeInput = (body, type) => {
     errors.push(`Champ requis manquant: amountReceived.value / currency`);
   }
 
-/*
-  if (type === 'recharge' && !body.user.baridiMob) {
-    errors.push(`Champ requis manquant: user.baridiMob pour recharge`);
+  /*
+    if (type === 'recharge' && !body.user.baridiMob) {
+      errors.push(`Champ requis manquant: user.baridiMob pour recharge`);
+    }
+  */
+  if (type === 'achat_euros') {
+    if (!body.user.baridiMob) {
+      errors.push("Champ requis manquant: BaridiMob");
+    }
+    if (!body.user.iban) {
+      errors.push("Champ requis manquant: IBAN");
+    }
   }
-*/
- if (type === 'achat_euros') {
-  if (!body.user.baridiMob) {
-    errors.push("Champ requis manquant: BaridiMob");
-  }
-  if (!body.user.iban) {
-    errors.push("Champ requis manquant: IBAN");
-  }
-}
-    if ((type === 'achat_dinars') && !body.user.baridiMob) {
+  if ((type === 'achat_dinars') && !body.user.baridiMob) {
     errors.push(`Champ requis manquant: BaridiMob`);
   }
-      if ((type === 'recharge') && !body.user.baridiMob ) {
+  if ((type === 'recharge') && !body.user.baridiMob) {
     errors.push(`Champ requis manquant: BaridiMob`);
   }
   return errors;
 };
+
+
+exports.ConfirmAchat = catchAsyncError(async (req, res, next) => {
+  try {
+    await upload(req, res);
+  } catch (err) {
+    const message = {
+      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
+      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
+      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
+    }[err.code] || 'Erreur lors de l’envoi de la photo.';
+    return next(new ErrorHandler(message, 400));
+  }
+  try {
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return next(new ErrorHandler('Commande introuvable', 404));
+    }
+    if (!req.file?.filename) {
+      return next(new ErrorHandler('Pièce jointe manquante', 400));
+    }
+    commande.paymentStatus = 'confirmee';
+    commande.paymentReceiptUrl = req.file.filename;
+    await commande.save();
+    res.status(200).json({
+      success: true,
+      message: 'Commande confirmée avec succès',
+    });
+  } catch (error) {
+    if (req.file?.filename) {
+      cleanupUploadedFile(req.file.filename, '../uploads/commande');
+    }
+    return next(new ErrorHandler(error.message, 400));
+  }
+});
+
+exports.ConfirmAchatEuros = catchAsyncError(async (req, res, next) => {
+  try {
+    await upload(req, res);
+  } catch (err) {
+    const message = {
+      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
+      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
+      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
+    }[err.code] || 'Erreur lors de l’envoi de la photo.';
+    return next(new ErrorHandler(message, 400));
+  }
+  try {
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      if (req.file?.filename) {
+        cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      }
+      return next(new ErrorHandler('Commande introuvable', 404));
+    }
+    if (!req.file?.filename) {
+      if (req.file?.filename) {
+        cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      }
+      return next(new ErrorHandler('Pièce jointe manquante', 400));
+    }
+    commande.paymentStatus = 'confirmee';
+    commande.paymentReceiptUrl = req.file.filename;
+    await commande.save();
+    res.status(200).json({
+      success: true,
+      message: 'Commande confirmée avec succès',
+    });
+  } catch (error) {
+    if (req.file?.filename) {
+      cleanupUploadedFile(req.file.filename, '../uploads/commande');
+    }
+    return next(new ErrorHandler(error.message, 400));
+  }
+});
+
+
+exports.ConfirmAchatDinars = catchAsyncError(async (req, res, next) => {
+  try {
+    await upload(req, res);
+  } catch (err) {
+    const message = {
+      'LIMIT_FILE_SIZE': `Pièce jointe trop grande. Limite de ${MAX_FILE_SIZE / (1024 * 1024)} Mo.`,
+      'LIMIT_FILE_COUNT': "Veuillez envoyer uniquement un fichier.",
+      'LIMIT_UNEXPECTED_FILE': err.message || "Type de fichier non autorisé."
+    }[err.code] || 'Erreur lors de l’envoi de la photo.';
+    return next(new ErrorHandler(message, 400));
+  }
+  try {
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      if (req.file?.filename) {
+        cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      }
+      return next(new ErrorHandler('Commande introuvable', 404));
+    }
+    if (!req.file?.filename) {
+      if (req.file?.filename) {
+        cleanupUploadedFile(req.file.filename, '../uploads/commande');
+      }
+      return next(new ErrorHandler('Pièce jointe manquante', 400));
+    }
+    commande.paymentStatus = 'confirmee';
+    commande.paymentReceiptUrl = req.file.filename;
+    await commande.save();
+    res.status(200).json({
+      success: true,
+      message: 'Commande confirmée avec succès',
+    });
+  } catch (error) {
+    if (req.file?.filename) {
+      cleanupUploadedFile(req.file.filename, '../uploads/commande');
+    }
+    return next(new ErrorHandler(error.message, 400));
+  }
+});

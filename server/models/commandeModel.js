@@ -30,6 +30,7 @@ const commandeSchema = new mongoose.Schema({
     required: [true, "S'il vous plaît entrez adresse e-mail de beneficiaire"],
     validate: [validator.isEmail, "S'il vous plaît entrez une adresse e-mail valide"],
   },
+  
 telephone: {
   type: String,
   required: [true, "S'il vous plaît entrez le numéro de téléphone du bénéficiaire"],
@@ -57,8 +58,12 @@ telephone: {
       enum: ['EUR', 'DZD']
     }
   },
+  isEmailSent: {
+    type: Boolean,
+    default: false
+  },
   trackingCode: String,
-  paymentReceiptUrl: String, // Could be file URL or base64 string
+  paymentReceiptUrl: String, // File Url
   paymentMethod: {
     type: String,
     enum: ['card', 'baridimob', 'cheque'],
